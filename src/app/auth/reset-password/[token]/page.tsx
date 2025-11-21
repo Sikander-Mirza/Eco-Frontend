@@ -110,14 +110,14 @@ export default function ResetPasswordPage() {
           <img className="w-24" src="/EmailGlow.png" alt="" />
           <div className="flex flex-col gap-9 justify-start items-start">
             <h1 className="text-[#f0f0f0] font-[500] text-[33px]">Check your email</h1>
-            <div>
+            {/* <div>
               <p className="text-[#dcdcdc] text-[15px] mt-1">
                 If an account exists, you will receive an email with a reset link.
               </p>
               <p className="text-[#dcdcdc] text-[15px] mt-3">
                 Check your inbox and follow the password reset link.
               </p>
-            </div>
+            </div> */}
             <Link href="/auth/signin">
               <button className="text-green-500 font-[500] mt-3 text-[15.5px]">
                 Return to login

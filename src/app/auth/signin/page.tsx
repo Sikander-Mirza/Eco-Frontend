@@ -36,7 +36,7 @@ export default function LoginPage() {
       toast.success("Login successful!");
       setTimeout(() => {
         const authState = store.getState().auth;
-        router.push("/Dashboard/");
+        router.push("/user/dashboard");
       }, 100);
       localStorage.setItem("IsAuthenticate" , "true")
       localStorage.setItem("token" , userData.token)

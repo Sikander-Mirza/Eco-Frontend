@@ -60,7 +60,7 @@ const WithdrawalDashboard = () => {
           setError(null);
           setProfitLoading(true);
         }
-
+console.log(user.id)
         const [profitResult] = await Promise.all([
           dispatch(getUserBalance(user.id)).unwrap()
         ]);

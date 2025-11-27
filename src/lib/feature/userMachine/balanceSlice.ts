@@ -11,6 +11,11 @@ interface Balance {
 }
 
 interface BalanceWithMachines extends Balance {
+  balances: {
+    total: number;
+    adminAdd: number;
+    mining: number;
+  };
   machines: {
     count: number;
     details: Array<{

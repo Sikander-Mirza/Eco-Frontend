@@ -1,30 +1,101 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store/store";
+
+import { getUserBalance } from "@/lib/feature/userMachine/balanceSlice";
+import { fetchUserWithdrawals } from "@/lib/feature/withdraw/withdrawalSlice";
+import { requestWithdrawal } from "@/lib/feature/withdraw/withdrawalSlice";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
-import { toast } from "sonner";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 export default function Wallet() {
+  const dispatch = useDispatch<AppDispatch>();
+
+
+  const { user, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
+
+
+  const { userBalance, loading: balanceLoading, error: balanceError } = useSelector(
+    (state: RootState) => state.balance
+  );
+
+  // ================================
+  // 🔥 REDUX STATE (Withdrawals)
+  // ================================
+  const { withdrawals, isLoading: withdrawalsLoading, error: withdrawalsError } = useSelector(
+    (state: RootState) => state.withdrawal
+  );
+
+  // ================================
+  // 🔥 API CALL ON PAGE LOAD
+  // ================================
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.id) dispatch(getUserBalance(user.id));
+      if (user.email) dispatch(fetchUserWithdrawals({ email: user.email }));
+    }
+  }, [dispatch, isAuthenticated, user]);
+
+
+
+  // ================================
+  // 🔥 WITHDRAW UI STATES
+  // ================================
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawNetwork, setWithdrawNetwork] = useState("");
-  const [depositNetwork, setDepositNetwork] = useState("");
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
+  type NetworkType = "TRC20" | "ERC20";
 
-  const walletAddresses = {
-    TRC20: "TXYZabcd1234567890TRON",
-    ERC20: "0xABCD1234567890ETH"
+  const [depositNetwork, setDepositNetwork] = useState<NetworkType | "">("");
+
+  const depositAddresses = {
+    ERC20: {
+      address: "0xE997EA28dA5Bcf59bED6e36245DF080DE8DA2358",
+      qr: "/erc20.jpg",
+    },
+    TRC20: {
+      address: "TV7d8mrM6MpCecbDQ2tifG19YNDJmcvRHc",
+      qr: "/trc20.jpg",
+    },
   };
 
-  const handleWithdraw = () => {
-    const amount = parseFloat(withdrawAmount);
-    if (!withdrawAmount || amount < 59.20) {
+
+  const handleWithdraw = async () => {
+    // Basic validation
+    if (!withdrawAmount || parseFloat(withdrawAmount) < 59.2) {
       toast.error("Minimum withdrawal amount is $59.20");
       return;
     }
@@ -32,77 +103,159 @@ export default function Wallet() {
       toast.error("Please fill all fields");
       return;
     }
-    toast.success("Withdrawal request submitted for admin review");
-    setIsWithdrawOpen(false);
-    setWithdrawAmount("");
-    setWithdrawAddress("");
-    setWithdrawNetwork("");
+    if (!user?.id || !user?.email) {
+      toast.error("User not authenticated");
+      return;
+    }
+
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      amount: parseFloat(withdrawAmount),
+      walletAddress: withdrawAddress,
+      network: withdrawNetwork,
+    };
+
+    try {
+      // Dispatch the thunk and unwrap the result
+      const result = await dispatch(requestWithdrawal(payload)).unwrap();
+
+      // Success message from API if available
+      toast.success(result?.message || "Withdrawal request submitted successfully");
+
+      // Clear the form and close modal
+      setIsWithdrawOpen(false);
+      setWithdrawAmount("");
+      setWithdrawAddress("");
+      setWithdrawNetwork("");
+    } catch (error: any) {
+      // Frontend-friendly error handling
+      let errorMessage = "Failed to submit withdrawal request";
+
+      // If API returned a structured error (string or object)
+      if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+
+      console.error("Withdrawal API Error:", error); // For debugging
+      toast.error(errorMessage);
+    }
   };
 
-  const transactions = [
-    { type: "Deposit", amount: "+$1,000.00", status: "Completed", date: "Nov 15, 2025" },
-    { type: "Withdrawal", amount: "-$500.00", status: "Completed", date: "Nov 14, 2025" },
-    { type: "Mining Reward", amount: "+$15.50", status: "Completed", date: "Nov 13, 2025" },
-    { type: "Deposit", amount: "+$2,000.00", status: "Completed", date: "Nov 10, 2025" },
-    { type: "Withdrawal", amount: "-$300.00", status: "Pending", date: "Nov 9, 2025" },
-  ];
+
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-slate-950 min-h-screen">
-  {/* Header */}
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
-    {/* Title & Subtitle */}
-    <div>
-      <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-        Wallet
-      </h2>
-      <p className="text-sm md:text-base text-slate-400 mt-1">
-        Manage your funds and view transaction history
-      </p>
-    </div>
-    
+    <div className="space-y-6 p-4 md:p-6 min-h-screen" style={{ backgroundColor: "#000000" }}>
+      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white">
+            Wallet
+          </h2>
+          <p className="text-sm text-slate-400">
+            Manage your funds and view transaction history
+          </p>
+        </div>
+
         <div className="flex gap-2">
+          {/* Deposit */}
           <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Button className="text-white" style={{ backgroundColor: "#22c55e" }}>
                 <ArrowDownToLine className="mr-2 h-4 w-4" />
                 Deposit
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700">
-              <DialogHeader>
-                <DialogTitle className="text-white">Deposit Funds</DialogTitle>
-                <DialogDescription className="text-slate-400">Choose your network and send USDT to the wallet address</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Select Network</Label>
-                 <Select value={depositNetwork} onValueChange={setDepositNetwork}>
-      <SelectTrigger className="bg-black text-white border border-gray-600">
-        <SelectValue placeholder="Choose network" />
-      </SelectTrigger>
 
-      <SelectContent className="bg-[#0b0e13] text-white border border-gray-700">
-        <SelectItem value="TRC20">USDT - TRC20 (TRON)</SelectItem>
-        <SelectItem value="ERC20">USDT - ERC20 (Ethereum)</SelectItem>
-      </SelectContent>
-    </Select>
+            <DialogContent className=" border-slate-700 max-w-md" style={{ backgroundColor: "#000000" }}>
+              <DialogHeader>
+                <DialogTitle className="text-white text-xl font-semibold">
+                  Deposit Funds
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Select network and send USDT
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+
+                {/* Select Network Title */}
+                <Label className="text-white font-medium">Select Network</Label>
+
+                {/* Network Cards */}
+                <div className="grid grid-cols-2 gap-3">
+
+                  {/* ERC20 */}
+                  <div
+                    onClick={() => setDepositNetwork("ERC20")}
+                    className={`cursor-pointer rounded-lg border p-4  hover:bg-slate-800 transition text-center
+          ${depositNetwork === "ERC20" ? "border-green-500" : "border-slate-700"}`}
+                    style={{ backgroundColor: "#1b1b1b" }}>
+                    <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" className="w-12 h-12 mx-auto" />
+                    <p className="text-white font-semibold mt-2">Ethereum</p>
+                    <p className="text-slate-400 text-xs">ERC 20</p>
+                  </div>
+
+                  {/* TRC20 */}
+                  <div
+                    onClick={() => setDepositNetwork("TRC20")}
+                    className={`cursor-pointer rounded-lg border p-4 bg-slate-800/40 hover:bg-slate-800 transition text-center
+          ${depositNetwork === "TRC20" ? "border-green-500" : "border-slate-700"}`}
+                    style={{ backgroundColor: "#1b1b1b" }}
+                  >
+                    <img src="https://cryptologos.cc/logos/tron-trx-logo.png" className="w-12 h-12 mx-auto" />
+                    <p className="text-white font-semibold mt-2">TRON</p>
+                    <p className="text-slate-400 text-xs">TRC 20</p>
+                  </div>
                 </div>
+
+                {/* QR + Address + Buttons */}
                 {depositNetwork && (
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Wallet Address</Label>
-                    <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
-                      <p className="font-mono text-sm break-all text-white">{walletAddresses[depositNetwork as keyof typeof walletAddresses]}</p>
+                  <div className="space-y-3 pt-2">
+
+                    {/* QR Code */}
+                    <div className="flex justify-center">
+                      <img
+                        src={depositAddresses[depositNetwork].qr}
+                        alt="QR Code"
+                        className="w-36 h-36 rounded-lg border border-slate-700"
+                      />
                     </div>
-                    <Button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(walletAddresses[depositNetwork as keyof typeof walletAddresses]);
-                        toast.success("Address copied to clipboard");
-                      }}
+
+                    {/* Address */}
+                    <div className="p-3 bg-slate-800 rounded border border-slate-700 text-white text-center text-sm break-all">
+                      {depositAddresses[depositNetwork].address}
+                    </div>
+
+                    {/* Copy Address */}
+                    <Button
+                      onClick={() =>
+                        navigator.clipboard.writeText(
+                          depositAddresses[depositNetwork].address
+                        )
+                      }
                       variant="outline"
-                      className="w-full border-slate-700 text-black "
+                      className="w-full"
                     >
                       Copy Address
+                    </Button>
+
+                    {/* WhatsApp Share */}
+                    <Button
+                      onClick={() => {
+                        const msg = `Send USDT to this address:\n\n${depositAddresses[depositNetwork].address}`;
+                        const url = `https://wa.me/18079074455?text=${encodeURIComponent(msg)}`;
+                        window.open(url, "_blank");
+                      }}
+                      className="w-full bg-green-600 text-white"
+                    >
+                      Share on WhatsApp
                     </Button>
                   </div>
                 )}
@@ -110,137 +263,200 @@ export default function Wallet() {
             </DialogContent>
           </Dialog>
 
+
+
+          {/* Withdraw */}
           <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-red-500 hover:bg-red-600 text-white" style={{backgroundColor:"#c02020"}}>
+              <Button className="bg-red-600 text-white" style={{ backgroundColor: "red" }}>
                 <ArrowUpFromLine className="mr-2 h-4 w-4" />
                 Withdraw
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700">
+
+            <DialogContent className="border-slate-700" style={{ backgroundColor: "#000000" }}>
               <DialogHeader>
-                <DialogTitle className="text-white">Withdraw Funds</DialogTitle>
-                <DialogDescription className="text-slate-400">Minimum withdrawal: $59.20</DialogDescription>
+                <DialogTitle className="text-white text-2xl font-semibold">
+                  Withdraw Funds
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Minimum withdrawal: $50.00
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="withdraw-amount" className="text-slate-300">Amount (USD)</Label>
-                  <Input 
-                    id="withdraw-amount"
-                    type="number"
-                    placeholder="59.20"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    min="59.20"
-                    step="0.01"
-                    className="bg-slate-800 border-slate-700 text-white"
-                  />
+
+              <div className="space-y-6">
+                {/* Amount */}
+                <Label className="text-slate-300">Amount</Label>
+                <Input
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="text-white"
+                  style={{ backgroundColor: "#1b1b1b" }}
+                  placeholder="50.00"
+                />
+
+                {/* Network */}
+                <div className="space-y-3">
+                  <Label className="text-white text-lg font-semibold">
+                    Select Network
+                  </Label>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Ethereum Card */}
+                    <div
+                      onClick={() => setWithdrawNetwork("ERC20")}
+                      className={`cursor-pointer rounded-xl border p-5  hover:bg-slate-800 transition 
+            ${withdrawNetwork === "ERC20" ? "border-green-500" : "border-slate-700"}`}
+                      style={{ backgroundColor: "#1b1b1b" }}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <img
+                          src="https://cryptologos.cc/logos/ethereum-eth-logo.png"
+                          className="w-12 h-12"
+                        />
+                        <span className="text-white font-semibold text-lg">Ethereum</span>
+                        <span className="text-slate-400 text-sm">ERC 20</span>
+                      </div>
+                    </div>
+
+                    {/* Tron Card */}
+                    <div
+                      onClick={() => setWithdrawNetwork("TRC20")}
+                      className={`cursor-pointer rounded-xl border p-5  hover:bg-slate-800 transition 
+            ${withdrawNetwork === "TRC20" ? "border-green-500" : "border-slate-700"}`}
+                      style={{ backgroundColor: "#1b1b1b" }}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <img
+                          src="https://cryptologos.cc/logos/tron-trx-logo.png"
+                          className="w-12 h-12"
+                        />
+                        <span className="text-white font-semibold text-lg">TRON</span>
+                        <span className="text-slate-400 text-sm">TRC 20</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-      <Label className="text-white">Network</Label>
-      <Select value={withdrawNetwork} onValueChange={setWithdrawNetwork}>
-        <SelectTrigger className="bg-black text-white border border-gray-600">
-          <SelectValue placeholder="Select network" />
-        </SelectTrigger>
-        <SelectContent className="bg-[#0b0e13] text-white border border-gray-700">
-          <SelectItem value="TRC20">USDT - TRC20 (TRON)</SelectItem>
-          <SelectItem value="ERC20">USDT - ERC20 (Ethereum)</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wallet-address" className="text-slate-300">Wallet Address</Label>
-                  <Input 
-                    id="wallet-address"
-                    placeholder="Enter your wallet address"
-                    value={withdrawAddress}
-                    onChange={(e) => setWithdrawAddress(e.target.value)}
-                    className="bg-slate-800 border-slate-700 text-white"
-                  />
-                </div>
-                <Button onClick={handleWithdraw} className="w-full bg-red-500 hover:bg-red-600 text-white" style={{backgroundColor:"#c02020"}}>
-                  Submit Withdrawal Request
+
+                {/* Wallet Address */}
+                <Label className="text-slate-300">Wallet Address</Label>
+                <Input
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  className="bg-slate-800 text-white"
+                  placeholder="Enter address"
+                  style={{ backgroundColor: "#1b1b1b" }}
+                />
+
+                <Button
+                  onClick={handleWithdraw}
+                  className="w-full bg-red-600 text-white text-lg py-3" style={{ backgroundColor: "#22c55e" }}
+                >
+                  Submit Withdrawal
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+
+
         </div>
       </div>
 
+      {/* BALANCE CARDS */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="border-slate-800" style={{ backgroundColor: "#1b1b1b" }}>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-400">
+            <CardTitle className="text-slate-400 text-sm">
               Available Balance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">$12,450.00</div>
-            <p className="text-xs text-emerald-400 mt-1">+$1,250.00 this month</p>
+            <div className="text-3xl text-white font-bold">
+              {balanceLoading
+                ? "Loading..."
+                : `$${Number(userBalance?.balances.total ?? 0).toLocaleString()}`}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className=" border-slate-800" style={{ backgroundColor: "#1b1b1b" }}>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-400">
-              Total Deposited
+            <CardTitle className="text-slate-400 text-sm">
+              Mining Balance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">$25,000.00</div>
-            <p className="text-xs text-slate-500 mt-1">All time</p>
+            <div className="text-3xl text-white font-bold">
+              {balanceLoading
+                ? "Loading..."
+                : `$${userBalance?.balances?.mining ?? 0}`}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="border-slate-800" style={{ backgroundColor: "#1b1b1b" }}>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-400">
-              Total Withdrawn
+            <CardTitle className="text-slate-400 text-sm">
+              Admin Added
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">$14,300.00</div>
-            <p className="text-xs text-slate-500 mt-1">All time</p>
+            <div className="text-3xl text-white font-bold">
+              {balanceLoading ? "Loading..." : `$${(userBalance?.balances?.adminAdd ?? 0).toLocaleString()}`}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      {/* TRANSACTION HISTORY */}
+      <Card className="border-slate-800" style={{ backgroundColor: "#1b1b1b" }}>
         <CardHeader>
-          <CardTitle className="text-white">Transaction History</CardTitle>
-          <CardDescription className="text-slate-400">Your recent wallet activity</CardDescription>
+          <CardTitle className="text-white">
+            Transaction History
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Your recent withdrawals
+          </CardDescription>
         </CardHeader>
+
         <CardContent>
+          {withdrawalsLoading && (
+            <p className="text-white">Loading transactions...</p>
+          )}
+
+          {!withdrawalsLoading && withdrawals?.length === 0 && (
+            <p className="text-slate-400">No withdrawal history found</p>
+          )}
+
           <div className="space-y-3">
-            {transactions.map((transaction, i) => (
+            {withdrawals?.map((w) => (
               <div
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"
+                key={w._id}
+                className="flex justify-between items-center p-3 border border-slate-700 rounded-lg"
+                style={{ backgroundColor: "#1b1b1b" }}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    transaction.type === "Deposit" || transaction.type === "Mining Reward"
-                      ? "bg-emerald-500/20"
-                      : "bg-slate-700"
-                  }`}>
-                    {transaction.type === "Deposit" || transaction.type === "Mining Reward" ? (
-                      <ArrowDownToLine className="h-5 w-5 text-emerald-400" />
-                    ) : (
-                      <ArrowUpFromLine className="h-5 w-5 text-slate-300" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">{transaction.type}</p>
-                    <p className="text-sm text-slate-400">{transaction.date}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`font-bold ${
-                    transaction.amount.startsWith("+") ? "text-emerald-400" : "text-white"
-                  }`}>
-                    {transaction.amount}
+                <div>
+                  <p className="text-white font-medium">
+                    Withdrawal
                   </p>
-                  <p className="text-xs text-slate-500">{transaction.status}</p>
+                  <p className="text-slate-400 text-sm">
+                    {new Date(w.transactionDate).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-white font-bold">
+                    -${w.amount}
+                  </p>
+                  <p
+                    className={`text-xs ${w.status === "pending"
+                      ? "text-yellow-400"
+                      : "text-emerald-400"
+                      }`}
+                  >
+                    {w.status}
+                  </p>
                 </div>
               </div>
             ))}

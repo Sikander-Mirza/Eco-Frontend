@@ -109,6 +109,7 @@ export interface Referral {
   firstName: string;
   lastName: string;
   email: string;
+  referralStatus: string;
   createdAt: string;
   deposit_count: number;
   discount: string;

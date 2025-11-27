@@ -1,5 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from '@/lib/store/store';
+import { getReferralById, Referral as ReferralType } from '@/lib/feature/userMachine/profitSlice';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,57 +12,109 @@ import { Copy, Users, DollarSign, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Referrals() {
-  const referralCode = "CRYPTO2025XYZ";
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  // GET API DATA FROM REDUX
+  // GET API DATA FROM REDUX
+  const { referralData, loading, error } = useSelector(
+    (state: RootState) => state.profit.referrals
+  );
+
+  console.log(referralData)
+
+  // Replace this with logged-in user's ID  
+  // Get logged-in user ID from localStorage safely (client-side)
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(getReferralById(user.id as string));
+    }
+  }, [user?.id, dispatch]);
+
+  const referralCode = user?.referralCode;
   const referralLink = `https://cryptomine.app/ref/${referralCode}`;
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text?: string) => {
+    if (!text) {
+      toast.error("No referral code available");
+      return;
+    }
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
   };
 
-  const referralStats = [
-    { title: "Total Referrals", value: "24", icon: Users, bgColor: "bg-emerald-500" },
-    { title: "Active Referrals", value: "18", icon: TrendingUp, bgColor: "bg-emerald-500" },
-    { title: "Total Earned", value: "$1,450", icon: DollarSign, bgColor: "bg-emerald-500" },
-  ];
-
-  const referralHistory = [
-    { name: "User #1234", status: "Active", earned: "$125.50", joined: "Nov 10, 2025" },
-    { name: "User #1235", status: "Active", earned: "$98.20", joined: "Nov 12, 2025" },
-    { name: "User #1236", status: "Pending", earned: "$0.00", joined: "Nov 14, 2025" },
-    { name: "User #1237", status: "Active", earned: "$210.80", joined: "Nov 15, 2025" },
-  ];
 
   return (
-    <div className="space-y-6 p-6 bg-slate-950 min-h-screen">
+    <div className="space-y-6 p-6 min-h-screen" style={{backgroundColor:"#000000"}}>
       <div>
         <h2 className="text-3xl font-bold tracking-tight text-white">Referral Program</h2>
         <p className="text-slate-400">Earn rewards by inviting friends</p>
       </div>
 
+      {/* LOADING & ERROR STATE */}
+      {loading && <p className="text-slate-400">Loading referrals...</p>}
+      {error && <p className="text-red-400">{error}</p>}
+
+      {/* STATS */}
       <div className="grid gap-4 md:grid-cols-3">
-        {referralStats.map((stat) => (
-          <Card key={stat.title} className="bg-slate-900 border-slate-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400">
-                {stat.title}
-              </CardTitle>
-              <div className={`${stat.bgColor} p-2 rounded-lg`}>
-                <stat.icon className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="border-slate-800" style={{backgroundColor:"#1b1b1b"}}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Total Referrals
+            </CardTitle>
+
+            <div className="p-2 rounded-lg"style={{backgroundColor:"#22c55e"}}>
+              <Users className="h-4 w-4 text-white" />
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {referralData?.length ?? 0}
+            </div>
+          </CardContent>
+        </Card>
+
+
+        <Card className="border-slate-800"style={{backgroundColor:"#1b1b1b"}}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm text-slate-400">Active Referrals</CardTitle>
+            <div className="p-2 rounded-lg" style={{backgroundColor:"#22c55e"}}>
+              <TrendingUp className="h-4 w-4 text-white" />
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {referralData.filter((ref) => ref.referralStatus === "Active").length}
+            </div>
+          </CardContent>
+        </Card>
+
+
+        <Card className="border-slate-800"style={{backgroundColor:"#1b1b1b"}}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm text-slate-400">Total Earned</CardTitle>
+            <div className="p-2 rounded-lg"style={{backgroundColor:"#22c55e"}}>
+              <DollarSign className="h-4 w-4 text-white" />
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              ${referralData.reduce((sum, r) => sum + Number(r.discount || 0), 0).toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      {/* REFERRAL LINKS */}
+      <Card className="border-slate-800"style={{backgroundColor:"#1b1b1b"}}>
         <CardHeader>
           <CardTitle className="text-white">Your Referral Link</CardTitle>
           <CardDescription className="text-slate-400">
-            First-time deposit: 10% bonus • Further deposits: 2% bonus • Registration required to qualify
+            First-time deposit: 10% bonus • Further deposits: 2% bonus
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -65,21 +122,25 @@ export default function Referrals() {
             <Input
               value={referralLink}
               readOnly
-              className="font-mono text-sm bg-slate-800 border-slate-700 text-white"
+              className="font-mono text-sm border-slate-700 text-white"
+              style={{backgroundColor:"#1b1b1b"}}
             />
             <Button
               onClick={() => copyToClipboard(referralLink)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
+              className="hover:bg-emerald-600 text-white shrink-0"
+              style={{backgroundColor:"#22c55e"}}
             >
               <Copy className="h-4 w-4 mr-2" />
               Copy
             </Button>
           </div>
+
           <div className="flex gap-2">
             <Input
               value={referralCode}
               readOnly
-              className="font-mono text-sm bg-slate-800 border-slate-700 text-white"
+              className="font-mono text-sm border-slate-700 text-white"
+              style={{backgroundColor:"#1b1b1b"}}
             />
             <Button
               onClick={() => copyToClipboard(referralCode)}
@@ -93,14 +154,15 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-900 border-slate-800">
+
+      <Card className=" border-slate-800" style={{backgroundColor:"#1b1b1b"}}>
         <CardHeader>
           <CardTitle className="text-white">How It Works</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <div className="h-12 w-12 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">
+              <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg" style={{backgroundColor:"#22c55e"}}>
                 1
               </div>
               <h3 className="font-semibold text-white">Share Your Link</h3>
@@ -109,7 +171,7 @@ export default function Referrals() {
               </p>
             </div>
             <div className="space-y-2">
-              <div className="h-12 w-12 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">
+              <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg" style={{backgroundColor:"#22c55e"}}>
                 2
               </div>
               <h3 className="font-semibold text-white">They Sign Up</h3>
@@ -118,7 +180,7 @@ export default function Referrals() {
               </p>
             </div>
             <div className="space-y-2">
-              <div className="h-12 w-12 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">
+              <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg" style={{backgroundColor:"#22c55e"}}>
                 3
               </div>
               <h3 className="font-semibold text-white">Earn Bonuses</h3>
@@ -130,36 +192,59 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-900 border-slate-800">
+
+      {/* REFERRAL LIST */}
+      <Card className="border-slate-800" style={{backgroundColor:"#1b1b1b"}}>
         <CardHeader>
           <CardTitle className="text-white">Your Referrals</CardTitle>
-          <CardDescription className="text-slate-400">Track your referral performance</CardDescription>
+          <CardDescription className="text-slate-400">
+            Track your referral performance
+          </CardDescription>
         </CardHeader>
+
         <CardContent>
           <div className="space-y-3">
-            {referralHistory.map((referral, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center" style={{ backgroundColor: "#185630" }}>
-                    <Users className="h-5 w-5 text-slate-300 " />
+            {referralData.map((referral, i) => {
+              
+              const earned = Number(referral.discount) || 0;
+
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 rounded-lg  border border-slate-700/50"
+                  style={{backgroundColor:"#1b1b1b"}}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-10 w-10 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#22c55e" }}
+                    >
+                      <Users className="h-5 w-5 text-slate-300" />
+                    </div>
+
+                    <div>
+                      <p className="font-medium text-white">
+                        {referral.firstName} {referral.lastName}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        Joined: {new Date(referral.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-white">{referral.name}</p>
-                    <p className="text-sm text-slate-400">Joined: {referral.joined}</p>
+
+                  <div className="text-right">
+                    <p
+                      className={`font-bold ${referral.referralStatus === "Active" ? "text-emerald-400" : "text-slate-400"
+                        }`}
+                    >
+                      ${earned.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-slate-500">{referral.referralStatus}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={`font-bold ${referral.status === "Active" ? "text-emerald-400" : "text-slate-400"
-                    }`}>
-                    {referral.earned}
-                  </p>
-                  <p className="text-xs text-slate-500">{referral.status}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+
           </div>
         </CardContent>
       </Card>

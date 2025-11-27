@@ -4,6 +4,7 @@ export interface User {
   lastName: string;
   email: string;
   country: string;
+  referralCode: string;
   role: 'user' | 'admin';
   phoneNumber:string;
   mainBalance:string;

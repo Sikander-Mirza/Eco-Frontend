@@ -3,8 +3,9 @@ import { User } from "./user";
 export interface UserMachine {
   _id: string;
   user: string | User;
-  machine: string;
+  machineName: string;
   assignedDate: Date;
+  priceRange: string;
   monthlyProfitAccumulated: number;
   status: "active" | "inactive";
 }
@@ -77,6 +78,7 @@ export interface TransactionResponse {
   currentPage: number;
   totalTransactions: number;
 }
+
 export interface UserMachineState {
   userMachines: UserMachine[];
   allUserMachines: UserMachine[];
@@ -93,6 +95,7 @@ export interface UserMachineState {
   searchQuery?: string; // Optional: if you implement search
   statusFilter?: string; // Optional: if you implement filtering
 }
+
 export interface TransactionFilter {
   page?: number;
   limit?: number;

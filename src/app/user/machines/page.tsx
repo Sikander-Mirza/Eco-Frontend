@@ -257,7 +257,7 @@ export default function Machines() {
                 </div>
               ) : myMachines.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-slate-400">You don't have any machines yet.</p>
+                  <p className="text-slate-400">You do not have any machines yet.</p>
                   <p className="text-sm text-slate-500 mt-2">Purchase machines from the marketplace to get started.</p>
                 </div>
               ) : (

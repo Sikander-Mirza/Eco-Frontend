@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import * as React from "react";
 import Image from "next/image";
@@ -115,17 +116,16 @@ export function DashboardSidebar({ onLogout }: DashboardSidebarProps) {
       <SidebarContent>
         <SidebarGroup className="mt-7">
           <SidebarGroupLabel>
-            <Image
-              src="/ecomiex-logo.png"
-              width={200}
-              height={250}
-              alt="Logo"
-              className="mx-auto mb-4"
-            />
+            <Link href="/" className="flex items-center space-x-2 ml-5 mb-5">
+              <span className="text-3xl font-bold">Ecomine</span>
+              <div className="flex -ml-2 h-[30px] w-[30px] items-center justify-center rounded-full bg-green-500">
+                <span className="text-xl font-bold">X</span>
+              </div>
+            </Link>
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu className="space-y-1 mt-5">
               {menuItems.map((item) => {
                 const isActive = pathname === item.url;
 

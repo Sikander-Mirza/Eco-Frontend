@@ -176,7 +176,7 @@ export default function Dashboard() {
     {
       title: "Referrals",
       value: loading ? "Loading..." 
-      : `${referralData.filter((ref) => ref.referralStatus === "Active").length}`,
+      : `${referralData.filter((ref) => ref.referralStatus === "active").length}`,
       icon: Users,
       gradient: "bg-green-600",
     }

@@ -86,7 +86,7 @@ export default function Referrals() {
 
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {referralData.filter((ref) => ref.referralStatus === "Active").length}
+              {referralData.filter((ref) => ref.referralStatus === "active").length}
             </div>
           </CardContent>
         </Card>
@@ -112,13 +112,13 @@ export default function Referrals() {
       {/* REFERRAL LINKS */}
       <Card className="border-slate-800"style={{backgroundColor:"#1b1b1b"}}>
         <CardHeader>
-          <CardTitle className="text-white">Your Referral Link</CardTitle>
+          <CardTitle className="text-white">Your Referral Code</CardTitle>
           <CardDescription className="text-slate-400">
             First-time deposit: 10% bonus • Further deposits: 2% bonus
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <Input
               value={referralLink}
               readOnly
@@ -133,7 +133,7 @@ export default function Referrals() {
               <Copy className="h-4 w-4 mr-2" />
               Copy
             </Button>
-          </div>
+          </div> */}
 
           <div className="flex gap-2">
             <Input

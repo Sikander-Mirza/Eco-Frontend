@@ -450,14 +450,13 @@ export default function Wallet() {
                     -${w.amount}
                   </p>
                   <p
-                   className={`text-xs ${
-    w.status === "pending"
-      ? "text-yellow-400"
-      : w.status === "rejected"
-        ? "text-[#ff0000] !important"
-        : "text-emerald-400"
-  }`}
->
+                    className={`text-xs ${w.status === "pending"
+                        ? "text-yellow-400"
+                        : w.status === "rejected"
+                          ? "text-[#ff0000] !important"
+                          : "text-emerald-400"
+                      }`}
+                  >
 
                     {w.status}
                   </p>

@@ -189,11 +189,11 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
         {/* Title & Subtitle */}
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-            {user ? `${user.firstName} ${user.lastName}` : " Dashboard"}
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#22c55e]">
+           Welcome Back {user ? `${user.firstName} ${user.lastName}` : " Dashboard"}
           </h2>
           <p className="text-sm md:text-base text-slate-400 mt-1">
-            Welcome back to your mining dashboard
+              Your Mining Dashboard
           </p>
         </div>
         <div className="flex gap-2">

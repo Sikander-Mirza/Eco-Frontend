@@ -15,6 +15,7 @@ interface ShareMachine {
   images: string[];
   isShareBased: boolean;
   priceRange: number;
+  soldShares: number;
   coinsMined: string;
   monthlyProfit: number;
   totalProfitEarned: number;
@@ -24,7 +25,7 @@ interface ShareMachine {
 interface UserShare {
   id: string;
   machineName: string;
-  numberOfShares: number;
+  numberOfShares: number; 
   pricePerShare: number;
   profitPerShare: number;
   totalInvestment: number;

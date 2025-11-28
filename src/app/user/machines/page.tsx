@@ -1,5 +1,4 @@
 "use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +12,7 @@ import { getUserShareDetails } from "@/lib/feature/shareMachine/shareMachineSlic
 import { useGetAllMiningMachinesQuery } from "@/lib/feature/Machines/miningMachinesApiSlice";
 import { purchaseAndAssignMachine, sellUserMachine } from "@/lib/feature/userMachine/transactionSlice";
 import { AppDispatch, RootState } from '@/lib/store/store';
+import { getSpecialShareMachine,purchaseSpecialShares,sellSharePurchase } from "@/lib/feature/shareMachine/shareMachineSlice";
 
 
 export default function Machines() {
@@ -29,6 +29,8 @@ export default function Machines() {
   // Fetch all mining machines for marketplace
   const { data: allMachines, isLoading: machinesLoading, error: machinesError } = useGetAllMiningMachinesQuery();
 
+const { specialMachine, loading: specialLoading, error: specialError } =
+  useSelector((state: RootState) => state.shareMachine);
 
 
 
@@ -53,6 +55,7 @@ export default function Machines() {
         if (user.id) {
           fetchPromises.push(dispatch(getUserShareDetails(user.id)).unwrap());
         }
+dispatch(getSpecialShareMachine());
 
         await Promise.all(fetchPromises);
       } catch (error) {
@@ -83,6 +86,44 @@ export default function Machines() {
       userShares.shares.length > 0
     );
   }, [userMachines, userShares]);
+
+
+// BUY SHARE HANDLER
+const handleBuyShares = async (numberOfShares: number) => {
+  if (!user || !isAuthenticated) {
+    toast.error("Please login to buy shares");
+    return;
+  }
+
+  if (!user.id) {
+    toast.error("User ID not found");
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+
+    const result = await dispatch(
+      purchaseSpecialShares({
+        userId: user.id,
+        numberOfShares,
+      })
+    ).unwrap();
+
+    toast.success(result?.message || "Shares purchased successfully!");
+
+    // Refresh user’s share details
+    await dispatch(getUserShareDetails(user.id));
+  } catch (error: any) {
+    toast.error(error || "Failed to purchase shares");
+    console.error("BUY SHARES ERROR:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+
 
   // Handle machine purchase
   const handlePurchaseMachine = async (machineId: string, machineName: string, price: number) => {
@@ -118,6 +159,7 @@ export default function Machines() {
 
   // Use fetched user machines data or fallback to empty array
   const myMachines = userMachines && Array.isArray(userMachines) ? userMachines : [];
+const sharedMachines = Array.isArray(specialMachine) ? specialMachine : [];
 
   // Get marketplace machines from API
   // Normalize API data shape to always return an array
@@ -144,20 +186,29 @@ export default function Machines() {
       </div>
 
       <Tabs defaultValue="marketplace" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-800/50 border border-slate-700">
-          <TabsTrigger
-            value="marketplace"
-            className="data-[state=active]:bg-green-600/20 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-green-600 text-slate-400"
-          >
-            Marketplace
-          </TabsTrigger>
-          <TabsTrigger
-            value="my-machines"
-            className="data-[state=active]:bg-green-600/20 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-green-600 text-slate-400"
-          >
-            My Machines
-          </TabsTrigger>
-        </TabsList>
+        <TabsList className="grid w-full max-w-md grid-cols-3 bg-slate-800/50 border border-slate-700">
+  <TabsTrigger
+    value="marketplace"
+    className="data-[state=active]:bg-green-600/20 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-green-600 text-slate-400"
+  >
+    Marketplace
+  </TabsTrigger>
+
+  <TabsTrigger
+    value="my-machines"
+    className="data-[state=active]:bg-green-600/20 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-green-600 text-slate-400"
+  >
+    My Machines
+  </TabsTrigger>
+
+  <TabsTrigger
+    value="shared-machines"
+    className="data-[state=active]:bg-green-600/20 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-green-600 text-slate-400"
+  >
+    Shared Machines
+  </TabsTrigger>
+</TabsList>
+
 
         <TabsContent value="marketplace" className="space-y-4">
           {machinesLoading ? (
@@ -241,95 +292,198 @@ export default function Machines() {
             </div>
           )}
         </TabsContent>
+<TabsContent value="shared-machines" className="space-y-4">
+  <Card className="border-slate-700 shadow-lg" style={{ backgroundColor: "#1b1b1b" }}>
+    <CardHeader>
+      <CardTitle className="text-white">Shared Machine</CardTitle>
+      <CardDescription className="text-slate-400">
+        Invest in shared mining machines by buying available shares.
+      </CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+        </div>
+      ) : !specialMachine ? (
+        <p className="text-slate-400 text-center py-6">No shared machine available.</p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-6 items-center">
+
+          {/* LEFT SIDE — IMAGE */}
+          <div className="flex justify-center">
+            <img
+              src={specialMachine.images?.[0] || "https://via.placeholder.com/400x300"}
+              alt={specialMachine.machineName}
+              className="rounded-lg w-full max-w-sm object-cover border border-slate-700"
+            />
+          </div>
+
+          {/* RIGHT SIDE — MACHINE INFO */}
+          <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-700 space-y-3">
+            <p className="text-white text-2xl font-bold">{specialMachine.machineName}</p>
+
+            <div className="space-y-1 text-slate-300">
+              <p>
+                <span className="font-semibold text-white">Share Price:</span>{" "}
+                <span className="text-green-500 font-bold">
+                  ${specialMachine.sharePrice}
+                </span>
+              </p>
+              <p><span className="font-semibold text-white">Total Shares:</span> {specialMachine.totalShares}</p>
+              <p><span className="font-semibold text-white">Available Shares:</span> {specialMachine.availableShares}</p>
+              <p><span className="font-semibold text-white">Sold Shares:</span> {specialMachine.soldShares}</p>
+              <p><span className="font-semibold text-white">Profit Per Share:</span> ${specialMachine.profitPerShare}</p>
+            </div>
+
+            <Button
+  className="mt-4 bg-green-700 hover:bg-green-800 text-white w-full"
+  onClick={() => handleBuyShares(1)} // Example: buy 1 share
+>
+  Buy Share
+</Button>
+
+          </div>
+
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
+
+
+
 
         <TabsContent value="my-machines" className="space-y-4">
-          <Card className=" border-slate-700 shadow-lg" style={{backgroundColor:"#1b1b1b"}}>
-            <CardHeader>
-              <CardTitle className="text-white">Your Mining Machines</CardTitle>
-              <CardDescription className="text-slate-400">
-                Manage your invested machines (10% deduction fee when sold)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+  <Card className="border-slate-700 shadow-lg" style={{ backgroundColor: "#1b1b1b" }}>
+    <CardHeader>
+      <CardTitle className="text-white">Your Mining & Shared Machines</CardTitle>
+      <CardDescription className="text-slate-400">
+        Manage your invested machines (10% deduction fee when sold)
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+        </div>
+      ) : myMachines.length === 0 && (!userShares?.shares || userShares.shares.length === 0) ? (
+        <div className="text-center py-8">
+          <p className="text-slate-400">You do not have any machines yet.</p>
+          <p className="text-sm text-slate-500 mt-2">Purchase machines or invest in shared machines to get started.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Map over regular mining machines */}
+          {myMachines
+            .filter(machine => machine.status?.toLowerCase() === "active")
+            .map((machine, i) => (
+              <div
+                key={`mining-${i}`}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 border border-slate-700"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-green-600 flex items-center justify-center">
+                    <Cpu className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">{machine?.machineName || "N/A"}</p>
+                    <p className="text-sm text-slate-400">
+                      Purchased: {new Date(machine.assignedDate).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-              ) : myMachines.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-slate-400">You do not have any machines yet.</p>
-                  <p className="text-sm text-slate-500 mt-2">Purchase machines from the marketplace to get started.</p>
+
+                <div className="text-right space-y-1">
+                  <p className="font-bold text-green-500">${machine.priceRange}</p>
+                  <p className="text-xs text-slate-400">{machine.status}</p>
+
+                  <Button
+                    style={{ backgroundColor: "#0b0e13" }}
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const salePrice =
+                          parseFloat(machine.priceRange.toString().replace("$", "")) * 0.9;
+
+                        const result = await dispatch(sellUserMachine(machine._id)).unwrap();
+                        toast.success(result?.message || `Machine sold for $${salePrice.toFixed(2)} (10% fee deducted)`);
+                      } catch (err: any) {
+                        toast.error(err?.message || "Failed to sell machine");
+                        console.error("SELL ERROR:", err);
+                      }
+                    }}
+                    className="mt-1 border-slate-600 text-slate-300"
+                  >
+                    Sell (10% fee)
+                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {myMachines
-                    .filter(machine => machine.status?.toLowerCase() === "active")
-                    .map((machine, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 border border-slate-700"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 rounded-full bg-green-600 flex items-center justify-center">
-                            <Cpu className="h-6 w-6 text-white" />
-                          </div>
+              </div>
+            ))}
 
-                          <div>
-                            <p className="font-medium text-white">
-                              {machine?.machineName || "N/A"}
-                            </p>
-                            <p className="text-sm text-slate-400">
-                              Purchased: {new Date(machine.assignedDate).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="text-right space-y-1">
-                          <p className="font-bold text-green-500">
-                            ${machine.priceRange}
-                          </p>
-
-                          <p className="text-xs text-slate-400">{machine.status}</p>
-
-                          <Button
-                            style={{ backgroundColor: "#0b0e13" }}
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const salePrice =
-                                  parseFloat(
-                                    machine.priceRange.toString().replace("$", "")
-                                  ) * 0.9;
-
-                                const result = await dispatch(sellUserMachine(machine._id)).unwrap();
-
-                                toast.success(
-                                  result?.message ||
-                                  `Machine sold for $${salePrice.toFixed(2)} (10% fee deducted)`
-                                );
-
-                              } catch (err: any) {
-                                toast.error(err?.message || "Failed to sell machine");
-                                console.error("SELL ERROR:", err);
-                              }
-                            }}
-                            className="mt-1 border-slate-600 text-slate-300"
-                          >
-                            Sell (10% fee)
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-
-
-
+          {/* Map over shared machines */}
+          {userShares?.shares?.map((share, i) => (
+            <div
+              key={`share-${i}`}
+              className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 border border-slate-700"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-yellow-600 flex items-center justify-center">
+                  <Cpu className="h-6 w-6 text-white" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <div>
+                  <p className="font-medium text-white">{share.machineName || "Shared Machine"}</p>
+                  <p className="text-sm text-slate-400">
+                    Purchased: {new Date(share.purchaseDate).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    Shares Owned: {share.numberOfShares}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right space-y-1">
+                <p className="font-bold text-green-500">${(share.numberOfShares * share.pricePerShare).toFixed(2)}</p>
+                <p className="text-xs text-slate-400">Shared Machine</p>
+
+                <Button
+                  style={{ backgroundColor: "#0b0e13" }}
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const result = await dispatch(
+                        sellSharePurchase({
+                          sharePurchaseId: share.id,
+                          payload: { numberOfSharesToSell: share.numberOfShares },
+                        })
+                      ).unwrap();
+
+                      toast.success(result?.message || "Shared machine sold successfully!");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Failed to sell shared machine");
+                      console.error("SELL SHARE ERROR:", err);
+                    }
+                  }}
+                  className="mt-1 border-slate-600 text-slate-300"
+                >
+                  Sell Shares
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
+
       </Tabs>
+
+
+      
     </div>
   );
 }
